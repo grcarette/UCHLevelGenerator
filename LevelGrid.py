@@ -4,48 +4,60 @@ import random
 import math
 
 class LevelGrid:
-    def __init__(self,shape,array_plotter, size="m"):
+    def __init__(self,shape,array_plotter, test_display, size="m"):
         self.shape = shape
         self.array_plotter = array_plotter
+        self.test_display = test_display
         self.map_size = size
         
         self.step_list = []
         self.point_list = []
         self.line_points = []
         self.max_size = [4,5]
-        self.min_size = [2,2]
         self.startgoal_pos = []
+        self.first_step = []
+        self.last_step = []
         
-        self.test_count = 0
-    
+        self.map_sizes = {
+            "s" : [5,7],
+            "m" : [8,10],
+            "l" : [11,20],
+        }
+        self.map_size = self.map_sizes[size]
+        
         self.pad_width = 4
-        self.max_block_size = 22
+        self.max_block_size = 24
         self.uch_level_size = (self.max_block_size*self.max_size[0],self.max_block_size*self.max_size[1])
         self.empty_block = 0
         self.aesthetic_block = 2
-        
-        if self.min_size[0] > self.shape[0]:
-            self.shape[0] = self.min_size[0]
-        if self.min_size[1] > self.shape[1]:
-            self.shape[0] = self.min_size[0]
-        if self.max_size[0] < self.shape[0]:
-            self.shape[0] = self.max_size[0]
-        if self.max_size[1] < self.shape[1]:
-            self.shape[1] = self.max_size[1]
             
-        self.steparray = np.ones(self.shape).astype(int)
+        self.steparray = np.ones(self.max_size).astype(int)
         self.steparray = np.pad(self.steparray, pad_width = self.pad_width, mode='constant', constant_values=0).astype(int)
         self.array = np.ones(self.uch_level_size).astype(int)
         
     def Generate_Level(self):
         self.Path_Find()
+        if self.test_display == 2:
+            self.array_plotter.Plot_Array(self.steparray)
         self.Generate_Points()
-        self.array_plotter.Plot_Array(self.array,"default")
+        if self.test_display:
+            self.array_plotter.Plot_Array(self.array)
+            
         self.Curve_Path()
-        self.array_plotter.Plot_Array(self.array,"default")
+        if self.test_display:
+            self.array_plotter.Plot_Array(self.array)
+            
         self.Connect_Lines()
-        self.array_plotter.Plot_Array(self.array,"rocky")
+        if self.test_display:
+            self.array_plotter.Plot_Array(self.array,"rocky")
+            
         self.Polish_Path()
+        if self.test_display:
+            self.array_plotter.Plot_Array(self.array, "rocky")
+            
+        self.Crop_Level()
+        if self.test_display:
+            self.array_plotter.Plot_Array(self.array, "rocky")
         
     def Path_Find(self):
         can_step = True
@@ -60,13 +72,14 @@ class LevelGrid:
         last_horizontal = 2
         max_diagonal = 1
         last_diagonal = 6
+        
+        self.step_list.append([current_position[1], current_position[0]])
     
         while can_step:
-            self.step_list.append([current_position[1], current_position[0]])
             self.steparray[current_position[1],current_position[0]] = current_step
             
-            #Remove when not testing
-            # self.array_plotter.Plot_Array(self.steparray)
+            if self.test_display == 3:
+                self.array_plotter.Plot_Array(self.steparray)
             
             valid_steps = []
 
@@ -78,7 +91,7 @@ class LevelGrid:
                     else:
                         valid_steps.append(step)
                                     
-            if len(valid_steps) == 0 or current_step >= 16:
+            if len(valid_steps) == 0 or current_step >= self.map_size[1]:
                 can_step = False
             else:
                 preferred_steps = [
@@ -100,13 +113,19 @@ class LevelGrid:
 
                 current_position[0] += next_step[0]
                 current_position[1] += next_step[1]
+                self.step_list.append([current_position[1], current_position[0]])
+                if current_step == 2:
+                    self.first_step = next_step
                 current_step += 1
 
-        if len(self.step_list) < 12:
+        if len(self.step_list) < self.map_size[0]:
             self.steparray = np.ones(self.shape)
             self.steparray = np.pad(self.steparray, pad_width = self.pad_width, mode='constant', constant_values=0)
             self.step_list = []
             self.Path_Find()
+            
+        self.last_step = next_step
+
             
     def Plot_Points(self, point_list, val):
         for point in point_list:
@@ -162,8 +181,6 @@ class LevelGrid:
         curved_points = []
         max_iteration = len(self.point_list)-1
         for i in range(max_iteration):
-            self.test_count += 1
-
             points = np.array((self.point_list[i:i+2]))
             distance = np.linalg.norm(points[0] - points[1])
             max_recursion = random.randint(math.floor(distance/max_line_coeff), math.floor(distance/min_line_coeff)) #We want longer lines to be more likely to curve
@@ -270,7 +287,7 @@ class LevelGrid:
         min_padding_y = 2
         max_padding_y = 3
         aesthetic_const = 3
-        current_step = 0
+        current_step = 1
         
         for point in self.line_points:
             if current_step % variance == 0:
@@ -294,8 +311,22 @@ class LevelGrid:
                     if self.array[x,y] != self.empty_block:            
                         self.array[x,y] = val
     
-    def Place_Start():
-        pass
+    def Place_StartGoal(self):
+        end_pos = self.startgoal_pos[0][1]
+        start_pos = self.startgoal_pos[0][1] + self.max_block_size
+        if self.first_step == [-1, 0]:
+            for block in range(start_pos, end_pos, -1):
+                print(block)
+        else:
+            for block in range(start_pos, end_pos, -1):
+                print(block)
+        
+        end_pos = self.startgoal_pos[1][1]
+        start_pos = self.startgoal_pos[1][1] + self.max_block_size
+        if self.last_step == [1,0]:
+            self.startgoal_pos[2] = 180
+        else:
+            pass
                     
     def Find_Side(self, side):
         side_block_list = []
@@ -321,6 +352,32 @@ class LevelGrid:
             pass
                 
         return side_block_list
+    
+    def Crop_Level(self):
+        
+        padding = 1
+        
+        crop = np.where(self.array != 1)
+        
+        crop_row_start = np.min(crop[0])
+        crop_row_end = np.max(crop[0])
+        crop_col_start = np.min(crop[1])
+        crop_col_end = np.max(crop[1])
+
+        print(crop_col_start, crop_col_end, crop_row_start, crop_row_end)
+        
+        self.array = self.array[crop_row_start:crop_row_end+padding, crop_col_start:crop_col_end+padding]
+
+        self.array = np.pad(self.array, pad_width = padding, mode='constant', constant_values=0)
+        
+        self.startgoal_pos[0][0] -= crop_row_start - padding
+        self.startgoal_pos[0][1] -= crop_col_start - padding
+        
+        self.startgoal_pos[1][0] -= crop_row_start - padding
+        self.startgoal_pos[1][1] -= crop_col_start - padding
+        
+
+    
 
                     
                 
