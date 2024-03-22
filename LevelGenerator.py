@@ -108,9 +108,21 @@ class LevelGenerator:
             with open('count.txt', 'r') as f:
                 count = int(f.read().strip())
         except FileNotFoundError:
-            count = 1
+            current_count = 0
+            for file in os.listdir(self.dir):
+                if('GeneratedLevel.') in file and file[-14:-12].isdigit(): #-14 -11 is the location of the numerical code
+                    print(file[-14:-11])
+                    file_count = int(file[-14:-11])
+                    print(file_count)
+                    if file_count > current_count:
+                        current_count = file_count
+            count = current_count + 1
+                
+        filename = f'GeneratedLevel.{count:03}.c.snapshot'    
+        count+=1
         
-        filename = f'GeneratedLevel.{count:03}.c.snapshot'
+        with open('count.txt', 'w') as f:
+            f.write(str(count))
         
         return filename
                 
