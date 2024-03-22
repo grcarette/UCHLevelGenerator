@@ -3,6 +3,7 @@ import random
 import numpy as np
 import math
 import lzma
+import os
 
 class LevelGenerator:
     def __init__(self, boundaries, startgoal_pos):
@@ -23,6 +24,7 @@ class LevelGenerator:
             2 : ["0.2039216","0.2039216","0.2039216"],
             1 : ["0.1764706","0.1764706","0.1764706"]
         }
+        self.dir = os.path.join('C:\\Users', os.getlogin(), 'Appdata','LocalLow', 'Clever Endeavour Games', 'Ultimate Chicken Horse', 'snapshots')
         
     def Generate_Level(self, block_list):
         self.Create_Scene()
@@ -70,7 +72,7 @@ class LevelGenerator:
         StartPlank.set("placeableID", "11")
         StartPlank.set("path", "StartPlank")
         StartPlank.set("pX", f"{self.offset_x+self.startgoal_pos[0][1]}")
-        StartPlank.set("pY", f"{self.offset_x+self.startgoal_pos[0][0]+self.tmp_offset}")
+        StartPlank.set("pY", f"{self.offset_x+self.startgoal_pos[0][0]+self.tmp_offset*2}")
         
         GoalBlock = ET.SubElement(self.root, "block")
         
@@ -78,7 +80,7 @@ class LevelGenerator:
         GoalBlock.set("placeableID", "2")
         GoalBlock.set("blockID", "39")
         GoalBlock.set("pX", f"{self.offset_x+self.startgoal_pos[1][1]}")
-        GoalBlock.set("pY", f"{self.offset_x+self.startgoal_pos[1][0]+self.tmp_offset}")
+        GoalBlock.set("pY", f"{self.offset_x+self.startgoal_pos[1][0]+self.tmp_offset*2}")
         
     def Create_Block(self,x_pos,y_pos,blockID,block_offset_x, block_offset_y,rotation,colour):
         block = ET.SubElement(self.root, "block")
@@ -100,11 +102,23 @@ class LevelGenerator:
     def Add_Blocks(self, block_list):
         for block in block_list:
             self.Create_Block(block[0], block[1],block[2],block[3],block[4],block[5],block[6])
+            
+    def Get_Next_Filename(self):
+        try: 
+            with open('count.txt', 'r') as f:
+                count = int(f.read().strip())
+        except FileNotFoundError:
+            count = 1
+        
+        filename = f'GeneratedLevel.{count:03}.c.snapshot'
+        
+        return filename
                 
     def Write_To_File(self):
         xml_string = ET.tostring(self.root)
+        filename = self.Get_Next_Filename()
         
-        with lzma.open("GenLc_5.c.snapshot", "wb", format=lzma.FORMAT_ALONE) as output_file:
+        print(os.path.join(self.dir, filename))
+        
+        with lzma.open(os.path.join(self.dir, filename), "wb", format=lzma.FORMAT_ALONE) as output_file:
             output_file.write(xml_string)
-    
-    
