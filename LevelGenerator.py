@@ -6,23 +6,34 @@ import lzma
 import os
 
 class LevelGenerator:
-    def __init__(self, boundaries, startgoal_pos):
+    def __init__(self, boundaries, levelgrid):
         self.root = ET.Element("scene")
         self.block_count = 7
         self.center_x = 0
         self.center_y = 1
         self.pitleft_offset = 4
         self.ceilright_offset = 3
-        self.tmp_offset = 9
+        self.start_offset = -0.5
+        self.max_level_size = [88,110]
         self.boundaries = boundaries
         self.offset_x = self.center_x - math.floor(self.boundaries[0]/2)
         self.offset_y = self.center_y - math.floor(self.boundaries[1]/2)
-        self.startgoal_pos = startgoal_pos
+        
         self.colour_dict = {
+            5 : ["0.1911765", "0.1084139", "0.07590831"],
             4 : ["0.3308824", "0.3308824", "0.3308824"],
             3 : ["0.253", "0.253", "0.253"],
             2 : ["0.2039216","0.2039216","0.2039216"],
             1 : ["0.1764706","0.1764706","0.1764706"]
+        }
+        
+        self.startgoal_pos = levelgrid.startgoal_pos
+        self.goal_rz = levelgrid.goal_rz
+        self.special_blocks = levelgrid.special_blocks
+        self.special_block_info = { #[blockID,offsetX,offsetY]
+            "crate" : [0, 0, 0],
+            "barrel" : [6, 0.5, 0.5],
+            "scaffold" : [56,0,0],
         }
         self.dir = os.path.join('C:\\Users', os.getlogin(), 'Appdata','LocalLow', 'Clever Endeavour Games', 'Ultimate Chicken Horse', 'snapshots')
         
@@ -39,12 +50,14 @@ class LevelGenerator:
         self.root.set("customLevelBackground", "1")
         self.root.set("customLevelMusic", f"{music}")
         self.root.set("customLevelAmbience", f"{music}")
-        
+
+
         DeathPit = ET.SubElement(self.root, "moved")
         
         DeathPit.set("placeableID", "7")
         DeathPit.set("path", "DeathPit")
         DeathPit.set("pY", f"{self.offset_y-self.pitleft_offset}")
+        
         
         LeftWall = ET.SubElement(self.root, "moved")
         
@@ -52,13 +65,16 @@ class LevelGenerator:
         LeftWall.set("path", "LeftWall")
         LeftWall.set("pX", f"{self.offset_x-self.pitleft_offset}")
         LeftWall.set("rZ", "270")
-        
+
+
         Ceiling = ET.SubElement(self.root, "moved")
         
+
         Ceiling.set("placeableID", "8")
         Ceiling.set("path", "Ceiling")
         Ceiling.set("pY", f"{self.offset_y+self.boundaries[1]+self.ceilright_offset}")
         Ceiling.set("rZ", "180")
+        
         
         RightWall = ET.SubElement(self.root, "moved")
         
@@ -67,12 +83,14 @@ class LevelGenerator:
         RightWall.set("pX", f"{self.offset_x+self.boundaries[0]+self.ceilright_offset}")
         RightWall.set("rZ", "90")
         
+        
         StartPlank = ET.SubElement(self.root, "moved")
         
         StartPlank.set("placeableID", "11")
         StartPlank.set("path", "StartPlank")
-        StartPlank.set("pX", f"{self.offset_x+self.startgoal_pos[0][1]}")
-        StartPlank.set("pY", f"{self.offset_x+self.startgoal_pos[0][0]+self.tmp_offset*2}")
+        StartPlank.set("pX", f"{self.offset_x+self.startgoal_pos[0][1]+self.start_offset}")
+        StartPlank.set("pY", f"{self.offset_y+self.startgoal_pos[0][0]}")
+        
         
         GoalBlock = ET.SubElement(self.root, "block")
         
@@ -80,7 +98,8 @@ class LevelGenerator:
         GoalBlock.set("placeableID", "2")
         GoalBlock.set("blockID", "39")
         GoalBlock.set("pX", f"{self.offset_x+self.startgoal_pos[1][1]}")
-        GoalBlock.set("pY", f"{self.offset_x+self.startgoal_pos[1][0]+self.tmp_offset*2}")
+        GoalBlock.set("pY", f"{self.offset_y+self.startgoal_pos[1][0]}")
+        GoalBlock.set("rZ", f"{self.goal_rz}")
         
     def Create_Block(self,x_pos,y_pos,blockID,block_offset_x, block_offset_y,rotation,colour):
         block = ET.SubElement(self.root, "block")
@@ -102,6 +121,9 @@ class LevelGenerator:
     def Add_Blocks(self, block_list):
         for block in block_list:
             self.Create_Block(block[0], block[1],block[2],block[3],block[4],block[5],block[6])
+        for sblock in self.special_blocks:
+            info = self.special_block_info[sblock[0]]
+            self.Create_Block(sblock[1], sblock[2], info[0], info[1], info[2], sblock[3], sblock[4])
             
     def Get_Next_Filename(self):
         try: 

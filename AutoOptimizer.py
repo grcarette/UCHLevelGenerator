@@ -36,105 +36,86 @@ class AutoOptimizer:
             1 : ["0.1764706","0.1764706","0.1764706"],
             2 : ["0.2039216","0.2039216","0.2039216"],
             3 : ["0.253", "0.253", "0.253"],
-            4 : ["0.3308824", "0.3308824", "0.3308824"]
+            4 : ["0.3308824", "0.3308824", "0.3308824"],
+            5 : ["0.1911765", "0.1084139", "0.07590831"]
         }
             
     def Plot_Matrix(self, arr):
-        colours_float = {key: [float(val) for val in value] for key, value in self.colour_dict.items()}
-        cmap = ListedColormap(colours_float.values())
-        plt.imshow(arr, cmap=cmap)
+        # colours_float = {key: [float(val) for val in value] for key, value in self.colour_dict.items()}
+        # cmap = ListedColormap(colours_float.values())
+        plt.imshow(arr)
         plt.gca().invert_yaxis()
         plt.show()
         
     def Optimize_Level(self):
-        uncropped_rows = np.any(self.arr != 1, axis = 1)
-        uncropped_cols = np.any(self.arr != 1, axis = 0)
-        self.arr = self.arr[uncropped_rows][:,uncropped_cols]
-        self.arr = np.pad(self.arr, pad_width = 1, mode='constant', constant_values=0)
-        
-        for colour in range(1,5):
+        for colour in range(1, len(self.colour_dict)):
             self.current_colour = colour
             self.shape_list = []
             self.Find_Shapes()
+            
             for shape in self.shape_list:
                 self.Optimize_Shape(shape)
-            self.Plot_Matrix
-
+        # self.Plot_Matrix(self.arr)
             
     def Find_Shapes(self):
         arr_rows = np.size(self.arr,0)
         arr_cols = np.size(self.arr,1)
-        for y in range(arr_cols):
-            for x in range(arr_rows):
-                if self.arr[x,y] == self.current_colour:
-                    self.arr[x,y] = 7
-                    self.arr[x,y] = self.current_colour
-                    self.shape_list.append((self.Produce_Shape(np.zeros((arr_rows, arr_cols)),(x,y))))
+        tmp_arr = np.copy(self.arr)
+        for col in range(arr_cols):
+            for row in range(arr_rows):
+                if tmp_arr[row,col] == self.current_colour:
+                    self.shape_list.append((self.Produce_Shape(tmp_arr, (row,col))))
 
-    def Produce_Shape(self, shape_mat, position):
+    def Produce_Shape(self, arr, position):
+        shape = [position]
         queue = [position]
-        shape_mat[position] = 1
-        self.arr[position] = 5
+        visited = 10
+        arr[position] = visited
         while len(queue) != 0:
             position = queue[0]
             adjacent_tiles = [(position[0]+1, position[1]),(position[0]-1, position[1]),(position[0], position[1]+1),(position[0], position[1]-1)]
             for tile in adjacent_tiles:
-                if self.arr[tile] == self.current_colour:
+                if arr[tile] == self.current_colour:
                     queue.append(tile)
-                    shape_mat[tile] = 1
-                    self.arr[tile] = 5
+                    shape.append(tile)
+                    arr[tile] = visited
             queue.remove(position)
-        return shape_mat
-    
-    def Crop_Level(self):
-        bounds = self.Crop_Shape(self.arr, self.bg_block)
-        self.arr = self.arr[bounds[2]:bounds[3],bounds[0]:bounds[1]]
-        self.arr = np.pad(self.arr, pad_width = 1, mode='constant', constant_values=0)
+        return shape
         
+    def Crop_Shape(self, shape):
+        min_x = min([coord[1] for coord in shape])
+        max_x = max([coord[1] for coord in shape])
+        min_y = min([coord[0] for coord in shape])
+        max_y = max([coord[0] for coord in shape])
 
-    def Iterate_Axis(self, shape, ax, block_type, ismax):
-        max_val = np.size(shape, ax)
-        if ismax:
-            for i in reversed(range(max_val)):
-                if np.any(shape != block_type, axis=ax):
-                    return i
-        else:
-            for i in range(max_val):
-                if np.any(shape != block_type, axis=ax):
-                    return i
+        return [min_x, max_x, min_y, max_y]
         
-    def Crop_Shape(self, shape, block_type):      
-        col_lst = [np.any(row) for row in shape]
-        row_lst = [np.any(col) for col in shape.T]
-
-        min_row = row_lst.index(True)
-        max_row = len(row_lst) - row_lst[::-1].index(True)
-        min_col = col_lst.index(True)
-        max_col = len(col_lst) - col_lst[::-1].index(True)
-
-        return [min_col,max_col,min_row,max_row]
-    
     def Optimize_Shape(self, shape):
-        crop = self.Crop_Shape(shape, self.empty_block)
         fitting_blocks = []
+        full_positions = []
+        crop = self.Crop_Shape(shape)
         for block in self.block_shapes:
-            if block[1] <= (crop[1] - crop[0]) and block[0] <= (crop[3] - crop[2]):
+            if block[1] <= (crop[3] - crop[2] + 1) and block[0] <= (crop[1] - crop[0] + 1):
                 fitting_blocks.insert(0,block)
-                
+
         for block in fitting_blocks:
-            for x in range(crop[0],crop[1]-(block[1])+1):
-                for y in range(crop[2],crop[3]-(block[0])+1):
-                    if self.arr[x,y] == 5:
-                        if np.all(self.arr[x:x+block[1],y:y+block[0]] == 5):
-                            self.block_list.append([y,x,block[2],block[3],block[4],block[5], self.current_colour])
-                            self.arr[x:x+block[1],y:y+block[0]] = block[2]
-                        
+            shape = [position for position in shape if position not in full_positions]
+            full_positions.extend(self.Fit_Block(shape, block))
+    
+    def Fit_Block(self, shape, block):
+        full_positions = []
+        for position in shape:
+            if np.all(self.arr[position[0]:position[0]+block[1],position[1]:position[1]+block[0]] == self.current_colour):
+                self.block_list.append([position[1],position[0],block[2],block[3],block[4],block[5], self.current_colour])
+                self.arr[position[0]:position[0]+block[1],position[1]:position[1]+block[0]] = block[2]
+                full_positions.extend([pos for pos in shape if position[0] <= pos[0] <= position[0]+block[1] - 1 and position[1] <= pos[1] <= position[1]+block[0] - 1])
+                
+        return full_positions
+
 if __name__ == "__main__":
-    # test_matrix = np.ones([3,3])
-    # # test_matrix = np.random.randint(2, size=(8,8))
+    # test_matrix = np.random.randint(2, size=(128,128))
     # test_matrix = np.pad(test_matrix, pad_width = 1, mode='constant', constant_values=0)
     # opt = AutoOptimizer(test_matrix)
     # opt.Optimize_Level()
-    a = [1,2,3,4,5,6,7,8]
-    print(a[2:6])
+    pass
 

@@ -4,8 +4,7 @@ import random
 import math
 
 class LevelGrid:
-    def __init__(self,shape,array_plotter, test_display, size="m"):
-        self.shape = shape
+    def __init__(self,array_plotter, test_display, size="m"):
         self.array_plotter = array_plotter
         self.test_display = test_display
         self.map_size = size
@@ -15,8 +14,13 @@ class LevelGrid:
         self.line_points = []
         self.max_size = [4,5]
         self.startgoal_pos = []
+        self.goal_rz = 0
         self.first_step = []
         self.last_step = []
+        
+        self.special_blocks = []
+        self.special_offset_row = 0
+        self.special_offset_col = 0
         
         self.map_sizes = {
             "s" : [5,7],
@@ -26,7 +30,7 @@ class LevelGrid:
         self.map_size = self.map_sizes[size]
         
         self.pad_width = 4
-        self.max_block_size = 24
+        self.max_block_size = 22
         self.uch_level_size = (self.max_block_size*self.max_size[0],self.max_block_size*self.max_size[1])
         self.empty_block = 0
         self.aesthetic_block = 2
@@ -58,13 +62,16 @@ class LevelGrid:
         self.Crop_Level()
         if self.test_display:
             self.array_plotter.Plot_Array(self.array, "rocky")
+            
+        self.Place_StartGoal()
         
     def Path_Find(self):
         can_step = True
         current_step = 2 #Arbitrary. Must be above 1 so we can use np.ones and pad with 0's
         all_steps = [[0,1],[0,-1],[1,1],[1,-1],[-1,-1],[-1,1],[1,0],[-1,0]]
-        current_position = [self.pad_width, self.pad_width]
-        # current_position = random.choice([[self.pad_width,self.pad_width],[self.shape[0]+1,self.shape[1]+1],[self.shape[0]+1,self.pad_width],[self.pad_width,self.shape[1]+1]])
+        starting_row = random.randint(self.pad_width, self.max_size[1]+self.pad_width-1)
+        starting_col = random.randint(self.pad_width, self.max_size[0]+self.pad_width-1)
+        current_position = [starting_row, starting_col]
         
         cons_horizontal = 0
         cons_diagonal = 0
@@ -116,15 +123,14 @@ class LevelGrid:
                 self.step_list.append([current_position[1], current_position[0]])
                 if current_step == 2:
                     self.first_step = next_step
+                self.last_step = next_step
                 current_step += 1
 
         if len(self.step_list) < self.map_size[0]:
-            self.steparray = np.ones(self.shape)
+            self.steparray = np.ones(self.max_size)
             self.steparray = np.pad(self.steparray, pad_width = self.pad_width, mode='constant', constant_values=0)
             self.step_list = []
             self.Path_Find()
-            
-        self.last_step = next_step
 
             
     def Plot_Points(self, point_list, val):
@@ -132,7 +138,7 @@ class LevelGrid:
             self.array[point[0],point[1]] = val
                 
     def Generate_Points(self):
-        chunk_pad = self.pad_width*2 + 2
+        chunk_pad = self.pad_width*2 + 3
         for step in self.step_list:
             point_x = self.max_block_size * (step[0]-self.pad_width) + random.randint(chunk_pad, self.max_block_size - chunk_pad)
             point_y = self.max_block_size * (step[1]-self.pad_width) + random.randint(chunk_pad, self.max_block_size - chunk_pad)
@@ -157,6 +163,14 @@ class LevelGrid:
                 unit_vector = orth_p_vector / np.linalg.norm(orth_p_vector)
                 
                 if angle_ac:
+                    # if angle_ac < 50:
+                    #     v_bc = points[2] - points[1]
+                    #     v_ba = points[0] - points[1]
+                    #     mag_ba = np.linalg.norm(points[])
+                    #     v_babc = v_bc + v_ba
+                    #     uv_babc = v_babc / np.linalg.norm(v_babc)
+                    #     points[1] += uv_babc * 
+                        #move b towards ab
                     if angle_ac < 90:
                         v_dc = point_c - mid_point
                         direction = 1
@@ -243,7 +257,7 @@ class LevelGrid:
     def Apply_Noise(self, point_list, type):
         if type == 't': #terrain
             val = self.empty_block
-            max_coeff = 3
+            max_coeff = 5
         if type == 'd': #decoration
             max_coeff = 5
         for point in point_list:
@@ -275,17 +289,15 @@ class LevelGrid:
         bottom_block_list = self.Find_Side('b')
         self.Apply_Noise(bottom_block_list, 'd')
         
-        self.array_plotter.Plot_Array(self.array, "rocky")
-        
     def Expand_Path(self):
-        padding = [3,3]
         self.array = np.pad(self.array, pad_width = self.pad_width, mode='constant', constant_values=0)
-        variance = random.randint(2,4)
+        variance = random.randint(2,6)
         
         min_padding_x = 2
         max_padding_x = 3
         min_padding_y = 2
         max_padding_y = 3
+        padding = [max_padding_x,max_padding_y]
         aesthetic_const = 3
         current_step = 1
         
@@ -302,9 +314,9 @@ class LevelGrid:
         
     def Expand_From_Point(self, point, x_pad, y_pad, val):
         x_min = point[0] - (x_pad-1) + self.pad_width
-        x_max = point[0] + y_pad + self.pad_width
-        y_min = point[1] - (x_pad-1) + self.pad_width
-        y_max = point[1] + y_pad + self.pad_width
+        x_max = point[0] + x_pad + self.pad_width - random.randint(0,1)
+        y_min = point[1] - (y_pad-1) + self.pad_width - random.randint(0,1)
+        y_max = point[1] + y_pad + self.pad_width 
         for x in range(x_min, x_max):
             for y in range(y_min, y_max):  
                 if not ((x == x_min or x == x_max) and(y == y_min or y == y_max)): 
@@ -312,22 +324,51 @@ class LevelGrid:
                         self.array[x,y] = val
     
     def Place_StartGoal(self):
-        end_pos = self.startgoal_pos[0][1]
-        start_pos = self.startgoal_pos[0][1] + self.max_block_size
-        if self.first_step == [-1, 0]:
-            for block in range(start_pos, end_pos, -1):
-                print(block)
-        else:
-            for block in range(start_pos, end_pos, -1):
-                print(block)
+        start_width = 4
+        start_offset = -2
+        start_offset_y = 4
+        goal_offset_y = -1
+        goal_safespot_y = -7
+        goal_left = -2
+        goal_right = 4
         
-        end_pos = self.startgoal_pos[1][1]
-        start_pos = self.startgoal_pos[1][1] + self.max_block_size
-        if self.last_step == [1,0]:
-            self.startgoal_pos[2] = 180
+        if self.first_step == [0, -1]:
+            start_offset_y = 1
+        tmp_arr = np.copy(self.array)
+        while np.any(self.array[self.startgoal_pos[0][0] + start_offset_y, self.startgoal_pos[0][1]:self.startgoal_pos[0][1]+start_width] != 0):
+            # tmp_arr[self.startgoal_pos[0][0], self.startgoal_pos[0][1]] = 8
+            # self.array_plotter.Plot_Array(tmp_arr)
+            self.startgoal_pos[0][0] -= 1
+        if self.first_step == [0, -1]:
+            print("Yep!")
+            self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset, self.startgoal_pos[0][0], 0, 5])
+            self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset+start_width-1, self.startgoal_pos[0][0], 0, 5]) 
         else:
-            pass
+            curr_y = self.startgoal_pos[0][0] - 1
+            curr_x = self.startgoal_pos[0][1]
+        
+            while np.any(self.array[curr_y,curr_x + start_offset:curr_x + start_offset + start_width] == 0):
+                if self.array[curr_y][curr_x + start_offset] == 0:
+                    self.array[curr_y][curr_x + start_offset] = 5
+                if self.array[curr_y][curr_x + start_offset + start_width-1] == 0:
+                    self.array[curr_y][curr_x + start_offset + start_width-1] = 5
+                curr_y -= 1
                     
+        if self.last_step == [0,1]:
+            goal_offset_y = 1
+            self.goal_rz = 180
+            
+        while self.array[self.startgoal_pos[1][0]][self.startgoal_pos[1][1]] == 0:
+            self.startgoal_pos[1][0] += goal_offset_y
+
+        if self.last_step == [0,1] and random.randint(0,1) == 1:
+            print("Holy chills")
+            self.array_plotter.Plot_Array(self.steparray)
+            self.array[self.startgoal_pos[1][0] + goal_safespot_y:self.startgoal_pos[1][0], self.startgoal_pos[1][1] + goal_left: self.startgoal_pos[1][1] + goal_right] = 0
+            self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset+1, self.startgoal_pos[1][0]-start_width, 0, 5])
+            self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset+start_width, self.startgoal_pos[1][0]-start_width, 0, 5])
+            self.array[self.startgoal_pos[1][0]- start_width - goal_offset_y, self.startgoal_pos[1][1] - goal_offset_y:self.startgoal_pos[1][1] + goal_right - 1] = 5
+            
     def Find_Side(self, side):
         side_block_list = []
         if side == 'b':
@@ -364,19 +405,19 @@ class LevelGrid:
         crop_col_start = np.min(crop[1])
         crop_col_end = np.max(crop[1])
 
-        print(crop_col_start, crop_col_end, crop_row_start, crop_row_end)
-        
         self.array = self.array[crop_row_start:crop_row_end+padding, crop_col_start:crop_col_end+padding]
-
         self.array = np.pad(self.array, pad_width = padding, mode='constant', constant_values=0)
         
-        self.startgoal_pos[0][0] -= crop_row_start - padding
-        self.startgoal_pos[0][1] -= crop_col_start - padding
+        self.special_offset_row = crop_row_start
+        self.special_offset_col = crop_col_start
         
-        self.startgoal_pos[1][0] -= crop_row_start - padding
-        self.startgoal_pos[1][1] -= crop_col_start - padding
+        self.startgoal_pos[0][0] -= self.special_offset_row
+        self.startgoal_pos[0][1] -= self.special_offset_col
         
-
+        self.startgoal_pos[1][0] -= self.special_offset_row
+        self.startgoal_pos[1][1] -= self.special_offset_col
+        
+            
     
 
                     
