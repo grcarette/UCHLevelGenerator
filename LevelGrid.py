@@ -260,15 +260,17 @@ class LevelGrid:
     def Apply_Noise(self, point_list, type):
         if type == 't': #terrain
             val = self.empty_block
-            max_coeff = 5
+            min_coeff = 4
+            max_coeff = 8
         if type == 'd': #decoration
+            min_coeff = 2
             max_coeff = 5
         for point in point_list:
             i = 0
             if i % 10 == 0: 
-                rocky_coefficient = random.randint(1,max_coeff)
+                rocky_coefficient = random.randint(min_coeff,max_coeff)
             if type == 'd':
-                shading_coeff = random.randint(1,4)
+                shading_coeff = random.randint(min_coeff,4)
                 if shading_coeff == 1:
                     val = 4
                 else:
@@ -289,37 +291,45 @@ class LevelGrid:
         bottom_block_list = self.Find_Side('b')
         self.Apply_Noise(bottom_block_list, 'd')
         
-        bottom_block_list = self.Find_Side('b')
-        self.Apply_Noise(bottom_block_list, 'd')
-        
     def Expand_Path(self):
         self.array = np.pad(self.array, pad_width = self.pad_width, mode='constant', constant_values=0)
-        variance = random.randint(2,6)
+        min_variance = 2
+        max_variance = 3
+        next_change = random.randint(min_variance, max_variance)
         
-        min_padding_x = 2
+        min_padding_x = 1
         max_padding_x = 3
-        min_padding_y = 2
+        min_padding_y = 1
         max_padding_y = 3
-        padding = [min_padding_x, max_padding_x, min_padding_y, max_padding_y]
-        aesthetic_const = 3
+        padding = [2, 2, 2, 2]
+        pad_left = padding[0]
+        pad_right = padding[1]
+        pad_down = padding[2]
+        pad_up = padding[3]
         current_step = 1
         
         for point in self.line_points:
-            if current_step % variance == 0:
-                pad_x = random.randint(max(min_padding_x, padding[0]-1),min(max_padding_x, padding[1]+1))
-                pad_y = random.randint(max(min_padding_y, padding[1]-1),min(max_padding_y, padding[0]+1))
-                padding = [pad_x, pad_y]
+            if current_step % next_change == 0:
+                pad_left += random.choice([num for num in [-2,-1,0,1] if min_padding_x <= (pad_left + num) <= max_padding_x])
+                pad_right += random.choice([num for num in [-2,-1,0,1] if min_padding_x <= (pad_right + num) <= max_padding_x])
+                pad_down += random.choice([num for num in [-1,0,1] if min_padding_y <= (pad_down + num) <= max_padding_y])
+                pad_up += random.choice([num for num in [-1,0,1] if min_padding_y <= (pad_up + num) <= max_padding_y])
+                
+                next_change = random.randint(min_variance, max_variance)
+                
+             
+                padding = [pad_left, pad_right, pad_down, pad_up]
             current_step += 1
-            self.Expand_From_Point(point, padding[0], padding[1], self.empty_block)
-            self.Expand_From_Point(point, padding[0]+aesthetic_const, padding[1]+aesthetic_const, self.aesthetic_block)
+            self.Expand_From_Point(point, padding, self.empty_block)
+            self.Expand_From_Point(point, padding, self.aesthetic_block)
         
         self.array = self.array[self.pad_width:-self.pad_width,self.pad_width:-self.pad_width]
         
-    def Expand_From_Point(self, point, x_pad, y_pad, val):
-        x_min = point[0] - (x_pad-1) + self.pad_width
-        x_max = point[0] + x_pad + self.pad_width - random.randint(0,1)
-        y_min = point[1] - (y_pad-1) + self.pad_width - random.randint(0,1)
-        y_max = point[1] + y_pad + self.pad_width 
+    def Expand_From_Point(self, point, padding, val):
+        x_min = point[0] - padding[0] + self.pad_width - val
+        x_max = point[0] + padding[1] + self.pad_width + val
+        y_min = point[1] - padding[2] + self.pad_width - val
+        y_max = point[1] + padding[3] + self.pad_width + val
         for x in range(x_min, x_max):
             for y in range(y_min, y_max):  
                 if not ((x == x_min or x == x_max) and(y == y_min or y == y_max)): 
@@ -334,28 +344,22 @@ class LevelGrid:
         goal_safespot_y = -7
         goal_left = -2
         goal_right = 4
+        girder_offset = 3
         
         if self.first_step == [0, -1]:
             start_offset_y = 1
-        tmp_arr = np.copy(self.array)
-        while np.any(self.array[self.startgoal_pos[0][0] + start_offset_y, self.startgoal_pos[0][1]:self.startgoal_pos[0][1]+start_width] != 0):
-            self.startgoal_pos[0][0] -= 1
-        self.startgoal_pos[0][0] -= 1
+            while np.any(self.array[self.startgoal_pos[0][0] + start_offset_y, self.startgoal_pos[0][1]:self.startgoal_pos[0][1]+start_width] != 0):
+                self.startgoal_pos[0][0] -= 1
         if self.first_step == [0, -1]:
-            print("Yep!")
+            self.startgoal_pos[0][0] -= 1
             self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset, self.startgoal_pos[0][0], 0, 5])
             self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset+start_width-1, self.startgoal_pos[0][0], 0, 5]) 
         else:
-            curr_y = self.startgoal_pos[0][0] - 1
-            curr_x = self.startgoal_pos[0][1]
-        
-            while np.any(self.array[curr_y,curr_x + start_offset:curr_x + start_offset + start_width] == 0):
-                if self.array[curr_y][curr_x + start_offset] == 0:
-                    self.array[curr_y][curr_x + start_offset] = 5
-                if self.array[curr_y][curr_x + start_offset + start_width-1] == 0:
-                    self.array[curr_y][curr_x + start_offset + start_width-1] = 5
-                curr_y -= 1
-                    
+            while np.all(self.array[self.startgoal_pos[0][0]-1,self.startgoal_pos[0][1] + start_offset:self.startgoal_pos[0][1] + start_offset + start_width] == 0):
+                self.startgoal_pos[0][0] -= 1
+            self.array[self.startgoal_pos[0][0]+goal_offset_y, self.startgoal_pos[0][1] + start_offset: self.startgoal_pos[0][1] + start_offset + start_width] = 5
+
+                                
         if self.last_step == [0,1]:
             goal_offset_y = 1
             self.goal_rz = 180
@@ -364,7 +368,6 @@ class LevelGrid:
             self.startgoal_pos[1][0] += goal_offset_y
 
         if self.last_step == [0,1] and random.randint(0,1) == 1:
-            self.array_plotter.Plot_Array(self.steparray)
             self.array[self.startgoal_pos[1][0] + goal_safespot_y:self.startgoal_pos[1][0], self.startgoal_pos[1][1] + goal_left: self.startgoal_pos[1][1] + goal_right] = 0
             self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset+1, self.startgoal_pos[1][0]-start_width, 0, 5])
             self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset+start_width, self.startgoal_pos[1][0]-start_width, 0, 5])
@@ -396,7 +399,6 @@ class LevelGrid:
         return side_block_list
     
     def Crop_Level(self):
-        
         padding = 1
         
         crop = np.where(self.array != 1)
@@ -418,26 +420,49 @@ class LevelGrid:
         self.startgoal_pos[1][0] -= self.special_offset_row
         self.startgoal_pos[1][1] -= self.special_offset_col
         
-    def Add_Assets(self):
-        pass
-    
     def Find_Nearest_Walls(self, point):
         nearby_points = []
         origin_point = point
         directions = [[-1,0], [1,0], [0,-1], [0,1]]
         tmp_arr = np.copy(self.array)
         tmp_arr[origin_point[0], origin_point[1]] = 12
-        # self.array_plotter.Plot_Array(tmp_arr)
         for direction in directions:
             current_point = origin_point.copy()
+            
             while self.array[current_point[0], current_point[1]] == 0:
                 current_point[0] += direction[0]
                 current_point[1] += direction[1]
                 tmp_arr[current_point[0], current_point[1]] += 8
                 if self.array[current_point[0], current_point[1]] != 0:
                     nearby_points.append(current_point)
-            # self.array_plotter.Plot_Array(tmp_arr)
         return nearby_points #[min_row, max_row, min_col, max_col]
+    
+    def Place_Girder(self, point):
+        nearest_points = self.Find_Nearest_Walls(point)
+        hor_dist = nearest_points[3][1] - nearest_points[2][1]
+        vert_dist = nearest_points[1][0] - nearest_points[0][0]
+        offset_list = [
+            [0,0],
+            [1,0],
+            [1,-1],
+            [2,-1],
+            [2,-2]
+        ]
+
+        if vert_dist <= hor_dist:
+            remainder = vert_dist % 5
+            num_girder = int((vert_dist - remainder) / 5)
+            for i in range(num_girder):
+                self.special_blocks.append(["scaffold", point[1], nearest_points[0][0] + i*5 + offset_list[remainder][0], 0, 5])
+            self.array[nearest_points[0][0]:nearest_points[0][0]+offset_list[remainder][0], point[1]] = 5
+            self.array[nearest_points[1][0]+offset_list[remainder][1]:nearest_points[1][0], point[1]] = 5
+        else:
+            remainder = hor_dist % 5
+            num_girder = int((hor_dist - remainder) / 5)
+            for i in range(num_girder):
+                self.special_blocks.append(["scaffold", nearest_points[2][1] + i*5 + offset_list[remainder][0], point[0], 270, 5])
+            self.array[point[0], nearest_points[2][1]:nearest_points[2][1]+offset_list[remainder][0]] = 5
+            self.array[point[0], nearest_points[3][1] + offset_list[remainder][1]:nearest_points[3][1]] = 5
             
     def Add_Girders(self):
         min_girders = math.floor(self.map_size[0]/3)
@@ -445,32 +470,22 @@ class LevelGrid:
         num_girders = random.randint(min_girders, max_girders)
         girder_padding = 5
         girder_points = 0
-        gr_offset = 2
-        gl_offset = -1
+        safe_r_offset = 3
+        safe_l_offset = -2
         
         while girder_points < num_girders:
             point = [random.randint(girder_padding, np.shape(self.array)[0]-girder_padding), random.randint(girder_padding, np.shape(self.array)[1]-girder_padding)]
-            # tmp_arr = np.copy(self.array)
-            # tmp_arr[point[0]+gl_offset:point[0]+gr_offset, point[1]+gl_offset:point[1]+gr_offset] = 6
-            # tmp_arr[point[0],point[1]] = 7
-            # self.array_plotter.Plot_Array(tmp_arr)
-            if np.all(self.array[point[0]+gl_offset-1:point[0]+gr_offset+1, point[1]+gl_offset-1:point[1]+gr_offset+1] == 0):
-                print("h")
-                nearest_points = self.Find_Nearest_Walls(point)
-                hor_dist = nearest_points[3][1] - nearest_points[2][1]
-                vert_dist = nearest_points[1][0] - nearest_points[0][0]
-      
-                if vert_dist <= hor_dist:
-                    self.array[point[0]+gr_offset:nearest_points[1][0],point[1]] = 5
-                    self.array[nearest_points[0][0]-gl_offset:point[0]+gl_offset,point[1]] = 5
-                    self.special_blocks.append(["scaffold",point[1], point[0]-gr_offset, 0, 5])
-                else: 
-                    self.array[point[0],point[1]+gr_offset:nearest_points[3][1]] = 5
-                    self.array[point[0],nearest_points[2][1]-gl_offset:point[1]+gl_offset] = 5
-                    self.special_blocks.append(["scaffold",point[1]-gr_offset, point[0], 270, 5])
-                self.array[point[0], point[1]] = 9
+            if np.all(self.array[point[0]+safe_l_offset:point[0]+safe_r_offset, point[1]+safe_l_offset:point[1]+safe_r_offset] == 0):
+                self.Place_Girder(point)
                 girder_points += 1
         self.array_plotter.Plot_Array(self.array)
+        
+    def Add_Vines(self):
+        pass
+        
+    def Add_Assets(self):
+        if self.has_girders:
+            self.Add_Girders()
                 
         
 if __name__ == "__main__":
