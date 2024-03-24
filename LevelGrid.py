@@ -256,17 +256,42 @@ class LevelGrid:
                 for point in new_points:
                     self.array[point[0],point[1]] = self.empty_block
                     self.line_points.append(point)
+
+    def Find_Side(self, side):
+        side_block_list = []
+        if side == 'b':
+            for row in range(self.uch_level_size[1]-2):
+                for col in range(self.uch_level_size[0]-2):
+                    current_block = self.array[col,row]
+                    next_block = self.array[col-1,row]
+                    if current_block == self.empty_block and next_block != self.empty_block:
+                        side_block_list.append([col-1,row])
+                        
+        if side == 'r' or side == 'l':
+            for row in range(self.uch_level_size[0]-2):
+                for col in range(self.uch_level_size[1]-2):
+                    current_block = self.array[row,col]
+                    next_block = self.array[row,col+1]
+                    if current_block == self.empty_block and next_block != self.empty_block and side == 'r':
+                        side_block_list.append([row,col+1])
+                    if current_block != self.empty_block and next_block == self.empty_block and side == 'l':
+                        side_block_list.append([row,col]) 
+                        
+        if side == 't':
+            pass
+                
+        return side_block_list
         
     def Apply_Noise(self, point_list, type):
         if type == 't': #terrain
             val = self.empty_block
-            min_coeff = 4
+            min_coeff = 2
             max_coeff = 8
         if type == 'd': #decoration
-            min_coeff = 2
+            min_coeff = 1
             max_coeff = 5
+        i = 0
         for point in point_list:
-            i = 0
             if i % 10 == 0: 
                 rocky_coefficient = random.randint(min_coeff,max_coeff)
             if type == 'd':
@@ -275,18 +300,24 @@ class LevelGrid:
                     val = 4
                 else:
                     val = 3
-            if random.randint(1,rocky_coefficient) != 1:
+            if random.randint(1,rocky_coefficient) == 1:
                 self.array[point[0], point[1]] = val
             i+= 1
 
     def Polish_Path(self):
         self.Expand_Path()
         
-        bottom_block_list = self.Find_Side('b')
-        self.Apply_Noise(bottom_block_list,'t')
+        rocky_coeff = random.randint(1,2)
         
-        side_block_list = self.Find_Side('s')
-        self.Apply_Noise(side_block_list, 't')
+        for i in range(rocky_coeff):
+            bottom_block_list = self.Find_Side('b')
+            self.Apply_Noise(bottom_block_list,'t')
+            
+            side_block_list = self.Find_Side('l')
+            self.Apply_Noise(side_block_list, 't')
+            
+            side_block_list = self.Find_Side('r')
+            self.Apply_Noise(side_block_list, 't')
         
         bottom_block_list = self.Find_Side('b')
         self.Apply_Noise(bottom_block_list, 'd')
@@ -310,8 +341,8 @@ class LevelGrid:
         
         for point in self.line_points:
             if current_step % next_change == 0:
-                pad_left += random.choice([num for num in [-2,-1,0,1] if min_padding_x <= (pad_left + num) <= max_padding_x])
-                pad_right += random.choice([num for num in [-2,-1,0,1] if min_padding_x <= (pad_right + num) <= max_padding_x])
+                pad_left += random.choice([num for num in [-1,0,1] if min_padding_x <= (pad_left + num) <= max_padding_x])
+                pad_right += random.choice([num for num in [-1,0,1] if min_padding_x <= (pad_right + num) <= max_padding_x])
                 pad_down += random.choice([num for num in [-1,0,1] if min_padding_y <= (pad_down + num) <= max_padding_y])
                 pad_up += random.choice([num for num in [-1,0,1] if min_padding_y <= (pad_up + num) <= max_padding_y])
                 
@@ -373,31 +404,6 @@ class LevelGrid:
             self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset+start_width, self.startgoal_pos[1][0]-start_width, 0, 5])
             self.array[self.startgoal_pos[1][0]- start_width - goal_offset_y, self.startgoal_pos[1][1] - goal_offset_y:self.startgoal_pos[1][1] + goal_right - 1] = 5
             
-    def Find_Side(self, side):
-        side_block_list = []
-        if side == 'b':
-            for j in range(self.uch_level_size[1]-2):
-                for i in range(self.uch_level_size[0]-2):
-                    current_block = self.array[i,j]
-                    next_block = self.array[i-1,j]
-                    if current_block == self.empty_block and next_block != self.empty_block:
-                        side_block_list.append([i-1,j])
-                        
-        if side == 's':
-            for j in range(self.uch_level_size[0]-2):
-                for i in range(self.uch_level_size[1]-2):
-                    current_block = self.array[j,i]
-                    next_block = self.array[j,i+1]
-                    if current_block == self.empty_block and next_block != self.empty_block:
-                        side_block_list.append([j,i+1])
-                    if current_block != self.empty_block and next_block == self.empty_block:
-                        side_block_list.append([j,i]) 
-                        
-        if side == 't':
-            pass
-                
-        return side_block_list
-    
     def Crop_Level(self):
         padding = 1
         
@@ -487,7 +493,6 @@ class LevelGrid:
         if self.has_girders:
             self.Add_Girders()
                 
-        
 if __name__ == "__main__":
     pass
 
