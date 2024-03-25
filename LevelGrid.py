@@ -191,6 +191,15 @@ class LevelGrid:
             
             recursion_depth += 1
             return self.Curve_Line(new_points, recursion_depth, max_recursion)
+        
+    def Find_Angle(self, points):
+        v_ab = np.array(points[0] - points[1])
+        v_bc = np.array(points[2] - points[1])
+        mag_ab = np.linalg.norm(v_ab)
+        mag_bc = np.linalg.norm(v_bc)
+        cos_angle = np.dot(v_ab, v_bc) / (mag_ab * mag_bc)
+        angle_ac = np.degrees(np.arccos(np.clip(cos_angle, -1.0, 1.0)))
+        return angle_ac
 
     def Curve_Path(self):
         min_line_coeff = 8
@@ -204,13 +213,7 @@ class LevelGrid:
             
             if(i <= (max_iteration - 2)):
                 points = np.array((self.point_list[i:i+3]))
-                
-                v_ab = np.array(points[0] - points[1])
-                v_bc = np.array(points[2] - points[1])
-                mag_ab = np.linalg.norm(v_ab)
-                mag_bc = np.linalg.norm(v_bc)
-                cos_angle = np.dot(v_ab, v_bc) / (mag_ab * mag_bc)
-                angle_ac = np.degrees(np.arccos(np.clip(cos_angle, -1.0, 1.0)))
+                angle_ac = self.Find_Angle(points)
                 
                 new_points = self.Curve_Line(points[0:2], 0, max_recursion, points[2], angle_ac)
             else:
