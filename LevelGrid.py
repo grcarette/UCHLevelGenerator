@@ -38,6 +38,7 @@ class LevelGrid:
         self.empty_block = 0
         self.aesthetic_block = 2
         self.filled_empty_block = 10
+        self.expansion_const = 100
             
         self.steparray = np.ones(self.max_size).astype(int)
         self.steparray = np.pad(self.steparray, pad_width = self.pad_width, mode='constant', constant_values=0).astype(int)
@@ -48,27 +49,32 @@ class LevelGrid:
         if self.test_display == 2:
             self.array_plotter.Plot_Array(self.steparray)
         self.Generate_Points()
-        if self.test_display:
+        if self.test_display == 1:
             self.array_plotter.Plot_Array(self.array)
             
         self.Curve_Path()
-        if self.test_display:
+        if self.test_display == 1:
             self.array_plotter.Plot_Array(self.array)
             
         self.Connect_Lines()
-        if self.test_display:
+        if self.test_display == 1:
             self.array_plotter.Plot_Array(self.array,"rocky")
             
         self.Polish_Path()
-        if self.test_display:
+        if self.test_display == 1:
             self.array_plotter.Plot_Array(self.array, "rocky")
             
         self.Crop_Level()
-        if self.test_display:
+        if self.test_display == 1:
             self.array_plotter.Plot_Array(self.array, "rocky")
             
         self.Place_StartGoal()
         self.Add_Assets()
+        if self.test_display == 1:
+            self.array_plotter.Plot_Array(self.array, "rocky")
+            
+        if self.test_display == 4:
+            self.array_plotter.Plot_Array(self.array, "rocky")
         
     def Path_Find(self):
         can_step = True
@@ -154,8 +160,8 @@ class LevelGrid:
         self.Plot_Points(self.point_list, self.empty_block)
         
     def Curve_Line(self, points, recursion_depth, max_recursion, point_c = False, angle_ac = False):
-        min_coeff = 7
-        max_coeff = 5
+        min_coeff = 9
+        max_coeff = 6
         if recursion_depth == max_recursion:
             return points
         else:
@@ -346,26 +352,42 @@ class LevelGrid:
              
                 padding = [pad_left, pad_right, pad_down, pad_up]
             current_step += 1
-            self.Expand_From_Point(point, padding, self.empty_block)
-            self.Expand_From_Point(point, padding, self.aesthetic_block)
-        
+            self.Expand_From_Point(point, padding, self.empty_block, current_step)
+            self.Expand_From_Point(point, padding, self.aesthetic_block, current_step)
+            
+        for row in range(np.shape(self.array)[0]):
+            for col in range(np.shape(self.array)[1]):
+                if self.array[row,col] >= self.expansion_const:
+                    self.array[row,col] = self.empty_block
+            
         self.array = self.array[self.pad_width:-self.pad_width,self.pad_width:-self.pad_width]
         
-    def Expand_From_Point(self, point, padding, val):
-        x_min = point[0] - padding[0] + self.pad_width - val
-        x_max = point[0] + padding[1] + self.pad_width + val
-        y_min = point[1] - padding[2] + self.pad_width - val
-        y_max = point[1] + padding[3] + self.pad_width + val
+    def Expand_From_Point(self, point, padding, block_type, current_step):
+        x_min = point[0] - padding[0] + self.pad_width - block_type
+        x_max = point[0] + padding[1] + self.pad_width + block_type
+        y_min = point[1] - padding[2] + self.pad_width - block_type
+        y_max = point[1] + padding[3] + self.pad_width + block_type
+        current_val = current_step + self.expansion_const
+        overlap_const = 50
         for x in range(x_min, x_max):
             for y in range(y_min, y_max):  
                 if not ((x == x_min or x == x_max-1) and(y == y_min or y == y_max-1)): 
-                    if self.array[x,y] != self.empty_block:            
-                        self.array[x,y] = val
+                    if self.array[x,y] != self.empty_block:
+                        if block_type == self.empty_block:
+                            self.array[x,y] = current_val
+                        else:
+                            if self.array[x,y] < self.expansion_const:
+                                self.array[x,y] = block_type
+                            elif self.expansion_const <= self.array[x,y] < (current_val - overlap_const):
+                                self.array[x,y] = block_type
+
     
     def Place_StartGoal(self):
         start_width = 4
-        start_offset = -2
+        start_offset_l = -2
+        start_offset_r = 2
         start_offset_y = 4
+        safe_offset  = 1
         goal_offset_y = -1
         goal_safespot_y = -7
         goal_left = -2
@@ -373,17 +395,19 @@ class LevelGrid:
         girder_offset = 3
         
         if self.first_step == [0, -1]:
+            print("yes")
+            self.startgoal_pos[0][0] += start_offset_y
             start_offset_y = 1
-            while np.any(self.array[self.startgoal_pos[0][0] + start_offset_y, self.startgoal_pos[0][1]:self.startgoal_pos[0][1]+start_width] != 0):
+            while np.any(self.array[self.startgoal_pos[0][0] + start_offset_y, self.startgoal_pos[0][1] + start_offset_l:self.startgoal_pos[0][1]+start_offset_r] != 0):
                 self.startgoal_pos[0][0] -= 1
-        if self.first_step == [0, -1]:
+                
             self.startgoal_pos[0][0] -= 1
-            self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset, self.startgoal_pos[0][0], 0, 5])
-            self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset+start_width-1, self.startgoal_pos[0][0], 0, 5]) 
+            self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset_l, self.startgoal_pos[0][0], 0, 5])
+            self.special_blocks.append(["scaffold", self.startgoal_pos[0][1]+start_offset_l+start_width-1, self.startgoal_pos[0][0], 0, 5]) 
         else:
-            while np.all(self.array[self.startgoal_pos[0][0]-1,self.startgoal_pos[0][1] + start_offset:self.startgoal_pos[0][1] + start_offset + start_width] == 0):
+            while np.all(self.array[self.startgoal_pos[0][0]-1,self.startgoal_pos[0][1] + start_offset_l:self.startgoal_pos[0][1] + start_offset_r] == 0):
                 self.startgoal_pos[0][0] -= 1
-            self.array[self.startgoal_pos[0][0]+goal_offset_y, self.startgoal_pos[0][1] + start_offset: self.startgoal_pos[0][1] + start_offset + start_width] = 5
+            self.array[self.startgoal_pos[0][0]+goal_offset_y, self.startgoal_pos[0][1] + start_offset_l: self.startgoal_pos[0][1] + start_offset_r] = 5
 
                                 
         if self.last_step == [0,1]:
@@ -395,9 +419,14 @@ class LevelGrid:
 
         if self.last_step == [0,1] and random.randint(0,1) == 1:
             self.array[self.startgoal_pos[1][0] + goal_safespot_y:self.startgoal_pos[1][0], self.startgoal_pos[1][1] + goal_left: self.startgoal_pos[1][1] + goal_right] = 0
-            self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset+1, self.startgoal_pos[1][0]-start_width, 0, 5])
-            self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset+start_width, self.startgoal_pos[1][0]-start_width, 0, 5])
+            self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset_l+1, self.startgoal_pos[1][0]-start_width, 0, 5])
+            self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset_l+start_width, self.startgoal_pos[1][0]-start_width, 0, 5])
             self.array[self.startgoal_pos[1][0]- start_width - goal_offset_y, self.startgoal_pos[1][1] - goal_offset_y:self.startgoal_pos[1][1] + goal_right - 1] = 5
+            
+        safe_offset_t = 3
+        offset_l = start_offset_l - safe_offset
+        offset_r = start_offset_r + safe_offset        
+        self.array[self.startgoal_pos[0][0] + safe_offset:self.startgoal_pos[0][0] + safe_offset_t, self.startgoal_pos[0][1] + offset_l: self.startgoal_pos[0][1] + offset_r] = 0
             
     def Crop_Level(self):
         padding = 1
@@ -413,14 +442,14 @@ class LevelGrid:
         self.array = np.pad(self.array, pad_width = padding, mode='constant', constant_values=1)
         self.array = np.pad(self.array, pad_width = padding, mode='constant', constant_values=0)
         
-        self.special_offset_row = crop_row_start - padding  
-        self.special_offset_col = crop_col_start - padding
+        self.special_offset_row = crop_row_start
+        self.special_offset_col = crop_col_start
         
-        self.startgoal_pos[0][0] -= self.special_offset_row
-        self.startgoal_pos[0][1] -= self.special_offset_col
+        self.startgoal_pos[0][0] -= self.special_offset_row - padding
+        self.startgoal_pos[0][1] -= self.special_offset_col - padding
         
-        self.startgoal_pos[1][0] -= self.special_offset_row
-        self.startgoal_pos[1][1] -= self.special_offset_col
+        self.startgoal_pos[1][0] -= self.special_offset_row - padding
+        self.startgoal_pos[1][1] -= self.special_offset_col - padding
         
     def Find_Nearest_Walls(self, point):
         nearby_points = []
@@ -564,7 +593,7 @@ class LevelGrid:
                 if self.Place_Platform(point, right_dir):
                     right_count += 1
                     
-        self.array_plotter.Plot_Array(self.array)
+        # self.array_plotter.Plot_Array(self.array)
 
     def Add_Vines(self):
         pass
