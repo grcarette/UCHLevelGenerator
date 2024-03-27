@@ -39,6 +39,8 @@ class AutoOptimizer:
             4 : ["0.3308824", "0.3308824", "0.3308824"],
             5 : ["0.1911765", "0.1084139", "0.07590831"]
         }
+        
+        self.Optimize_Level()
             
     def Plot_Matrix(self, arr):
         # colours_float = {key: [float(val) for val in value] for key, value in self.colour_dict.items()}
