@@ -115,9 +115,5 @@ class AutoOptimizer:
         return full_positions
 
 if __name__ == "__main__":
-    # test_matrix = np.random.randint(2, size=(128,128))
-    # test_matrix = np.pad(test_matrix, pad_width = 1, mode='constant', constant_values=0)
-    # opt = AutoOptimizer(test_matrix)
-    # opt.Optimize_Level()
     pass
 

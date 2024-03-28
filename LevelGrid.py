@@ -1,20 +1,15 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import random
 import math
-from ArrayPlotter import ArrayPlotter
 
 class LevelGrid:
-    def __init__(self,array_plotter, level_args, test_display = 0):
-        self.array_plotter = array_plotter
-        self.test_display = test_display
-        
+    def __init__(self, level_args):
         self.map_size = level_args[0]
-        self.map_theme = level_args[1]
-        self.thickness = level_args[2]
-        self.music = level_args[3]
-        self.asset_frequency = level_args[4]
-        self.background = level_args[5]
+        self.theme = level_args[1]
+        self.music = level_args[2]
+        self.background = level_args[3]
+        self.thickness = level_args[4]
+        self.asset_frequency = level_args[5]
         self.curve_intensity = int(float(level_args[6]))
         self.smooth_scaling = int(float(level_args[7]))
         
@@ -56,40 +51,15 @@ class LevelGrid:
         self.Generate_Level()
         
     def Generate_Level(self):
-        self.Path_Find()
-        if self.test_display in [2,3]:
-            self.array_plotter.Plot_Array(self.steparray)
-        
-        self.Generate_Points()
-        if self.test_display in [1,3]:
-            self.array_plotter.Plot_Array(self.array)
-            
-        self.Curve_Path()
-        if self.test_display in [1,3]:
-            self.array_plotter.Plot_Array(self.array)
-            
-        self.Connect_Lines()
-        if self.test_display in [1,3]:
-            self.array_plotter.Plot_Array(self.array,"rocky")
-            
+        self.Path_Find()     
+        self.Generate_Points()       
+        self.Curve_Path()    
+        self.Connect_Lines()  
         self.Polish_Path()
-        if self.test_display in [1,3]:
-            self.array_plotter.Plot_Array(self.array, "rocky")
-
         self.Crop_Level()
-        if self.test_display in [1,3]:
-            self.array_plotter.Plot_Array(self.array, "rocky")
-
         self.Place_StartGoal()
         self.Add_Assets()
 
-        
-        if self.test_display == 1:
-            self.array_plotter.Plot_Array(self.array, "rocky")
-            
-        if self.test_display == 4:
-            self.array_plotter.Plot_Array(self.array, "rocky")
-        
     def Path_Find(self):
         can_step = True
         current_step = 2 #Arbitrary. Must be above 1 so we can use np.ones and pad with 0's
@@ -102,16 +72,12 @@ class LevelGrid:
         cons_diagonal = 0
         max_horizontal = 2
         last_horizontal = 2
-        max_diagonal = 1
         last_diagonal = 6
         
         self.step_list.append([current_position[1], current_position[0]])
     
         while can_step:
             self.steparray[current_position[1],current_position[0]] = current_step
-            
-            if self.test_display == 3:
-                self.array_plotter.Plot_Array(self.steparray)
             
             valid_steps = []
 
@@ -165,7 +131,7 @@ class LevelGrid:
     def Generate_Points(self):
         if self.thickness == 'Thin':
             thickness_offset = -3
-        if self.thickness == 'Regular':
+        if self.thickness == 'Medium':
             thickness_offset = 0
         if self.thickness == 'Thick':
             thickness_offset = 3
@@ -349,7 +315,6 @@ class LevelGrid:
             if self.smooth_scaling == 4:
                 min_coeff = 4
                 max_coeff = 8
-            
         if type == 'd': #decoration
             min_coeff = 1
             max_coeff = 5
@@ -375,15 +340,11 @@ class LevelGrid:
         side_coeff = 1
         if self.smooth_scaling < 3:
             rocky_coeff = 2
+            side_coeff = 2
         elif self.smooth_scaling == 3:
             rocky_coeff = random.randint(1,2)
         else:
-            rocky_coeff = 2
-            side_coeff = 2
-        
-        for i in range(rocky_coeff):
-            bottom_block_list = self.Find_Side('b')
-            self.Apply_Noise(bottom_block_list,'t')
+            rocky_coeff = 1
         
         if self.smooth_scaling != 5:
             for i in range(side_coeff):
@@ -392,6 +353,10 @@ class LevelGrid:
                 
                 right_block_list = self.Find_Side('r')
                 self.Apply_Noise(right_block_list, 't')
+
+            for i in range(rocky_coeff):
+                bottom_block_list = self.Find_Side('b')
+                self.Apply_Noise(bottom_block_list,'t', True)
         
         bottom_block_list = self.Find_Side('b')
         self.Apply_Noise(bottom_block_list, 'd')
@@ -400,25 +365,24 @@ class LevelGrid:
     def Expand_Path(self):
         self.array = np.pad(self.array, pad_width = self.pad_width, mode='constant', constant_values=0)
         min_variance = 2
-        max_variance = 10
+        max_variance = 8
         next_change = random.randint(min_variance, max_variance)
         
-        min_padding_x = 2 
+        min_padding_x = 2
         max_padding_x = 3
         min_padding_y = 2
         max_padding_y = 3
+        padding = [3,3,3,3]
         
         if self.thickness == 'Thin':
             min_padding_x -= 1
-            min_padding_y -= 1
         
         if self.thickness == 'Thick':
             min_padding_x += 1
             max_padding_x += 1
             min_padding_y += 1
             max_padding_y += 1
-
-        padding = [2, 2, 2, 2]
+            
         pad_left = padding[0]
         pad_right = padding[1]
         pad_down = padding[2]
@@ -429,8 +393,16 @@ class LevelGrid:
             if current_step % next_change == 0:
                 pad_left += random.choice([num for num in [-1,0,1] if min_padding_x <= (pad_left + num) <= max_padding_x])
                 pad_right += random.choice([num for num in [-1,0,1] if min_padding_x <= (pad_right + num) <= max_padding_x])
+                if pad_left == min_padding_x and pad_right == min_padding_x and self.thickness != 'Thin':
+                    if random.randint(0,2) == 1:
+                        pad_left -= random.randint(0,1)
+                        pad_right += 1 * ((min_padding_x - 1) - pad_left)
                 pad_down += random.choice([num for num in [-1,0,1] if min_padding_y <= (pad_down + num) <= max_padding_y])
                 pad_up += random.choice([num for num in [-1,0,1] if min_padding_y <= (pad_up + num) <= max_padding_y])
+                if pad_down == min_padding_y and pad_up == min_padding_y and self.thickness != 'Thin':
+                    if random.randint(0,2) == 1:
+                        pad_down -= random.randint(0,1)
+                        pad_up += 1 * ((min_padding_y - 1) - pad_down)
                 
                 next_change = random.randint(min_variance, max_variance)
                 
@@ -491,6 +463,8 @@ class LevelGrid:
         goal_left = -2
         goal_right = 4
         girder_offset = 3
+        safe_offset_t = 4
+        door_offset = 2
         
         if self.first_step == [0, -1]:
             self.startgoal_pos[0][0] += start_offset_y
@@ -504,7 +478,8 @@ class LevelGrid:
         else:
             while np.all(self.array[self.startgoal_pos[0][0]-1,self.startgoal_pos[0][1] + start_offset_l:self.startgoal_pos[0][1] + start_offset_r] == 0):
                 self.startgoal_pos[0][0] -= 1
-            self.array[self.startgoal_pos[0][0]+goal_offset_y, self.startgoal_pos[0][1] + start_offset_l: self.startgoal_pos[0][1] + start_offset_r] = 5
+        self.array[self.startgoal_pos[0][0]+goal_offset_y, self.startgoal_pos[0][1] + start_offset_l: self.startgoal_pos[0][1] + start_offset_r] = 5
+        self.array[self.startgoal_pos[0][0]+safe_offset_t, self.startgoal_pos[0][1] + start_offset_l: self.startgoal_pos[0][1] + start_offset_r] = 5
 
                                 
         if self.last_step == [0,1]:
@@ -519,8 +494,10 @@ class LevelGrid:
             self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset_l+1, self.startgoal_pos[1][0]-start_width, 0, 5])
             self.special_blocks.append(["scaffold", self.startgoal_pos[1][1]+start_offset_l+start_width, self.startgoal_pos[1][0]-start_width, 0, 5])
             self.array[self.startgoal_pos[1][0]- start_width - goal_offset_y, self.startgoal_pos[1][1] - goal_offset_y:self.startgoal_pos[1][1] + goal_right - 1] = 5
+        
+        self.special_blocks.append(["door", self.startgoal_pos[0][1]+start_offset_l, self.startgoal_pos[0][0] + door_offset, 0, 5])
+        self.special_blocks.append(["door", self.startgoal_pos[0][1]+start_offset_l+start_width-1, self.startgoal_pos[0][0] + door_offset, 0, 5, -1]) 
             
-        safe_offset_t = 3
         offset_l = start_offset_l - safe_offset
         offset_r = start_offset_r + safe_offset        
         self.array[self.startgoal_pos[0][0] + safe_offset:self.startgoal_pos[0][0] + safe_offset_t, self.startgoal_pos[0][1] + offset_l: self.startgoal_pos[0][1] + offset_r] = 0
@@ -594,17 +571,28 @@ class LevelGrid:
             self.array[point[0], nearest_points[3][1] + offset_list[remainder][1]:nearest_points[3][1]] = 5
             self.array[point[0], nearest_points[2][1]+offset_list[remainder][0]:nearest_points[3][1] + offset_list[remainder][1]] = self.filled_empty_block
             
-    def Add_Girders(self, num_girders):
+    def Find_Empty_Blocks(self):
         girder_padding = 5
+        empty_blocks = []
+        for row in range(girder_padding, np.shape(self.array)[0] - girder_padding):
+            for col in range(girder_padding, np.shape(self.array)[1] - girder_padding):
+                if self.array[row, col] == self.empty_block:
+                    empty_blocks.append([row,col])
+        return empty_blocks
+            
+    def Add_Girders(self, num_girders):
         girder_count = 0
         safe_r_offset = 3
         safe_l_offset = -2
         
-        while girder_count < num_girders:
-            point = [random.randint(girder_padding, np.shape(self.array)[0]-girder_padding), random.randint(girder_padding, np.shape(self.array)[1]-girder_padding)]
+        empty_blocks = self.Find_Empty_Blocks()
+        while girder_count < num_girders and len(empty_blocks) > 0:
+            point = random.choice(empty_blocks)
             if np.all(self.array[point[0]+safe_l_offset:point[0]+safe_r_offset, point[1]+safe_l_offset:point[1]+safe_r_offset] == self.empty_block):
                 self.Place_Girder(point)
                 girder_count += 1
+            else:
+                empty_blocks.remove(point)
         
     def Place_Platform(self, point, direction):
         if self.thickness == 'Thin':

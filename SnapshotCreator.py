@@ -6,7 +6,7 @@ import lzma
 import os
 
 class SnapshotCreator:
-    def __init__(self, levelgrid, optimizer):
+    def __init__(self, levelgrid, optimizer, theme_attributes, is_default_values):
         self.root = ET.Element("scene")
         self.block_list = optimizer.block_list
         self.level_grid = levelgrid
@@ -20,50 +20,17 @@ class SnapshotCreator:
         self.boundaries = [np.size(optimizer.arr, 1), np.size(optimizer.arr, 0)]
         self.offset_x = self.center_x - math.floor(self.boundaries[0]/2)
         self.offset_y = self.center_y - math.floor(self.boundaries[1]/2)
+        self.is_default_values = is_default_values
         
-        self.stone_colour_dict = {
-            5 : ["0.1911765", "0.1084139", "0.07590831"],
-            4 : ["0.3308824", "0.3308824", "0.3308824"],
-            3 : ["0.253", "0.253", "0.253"],
-            2 : ["0.2039216","0.2039216","0.2039216"],
-            1 : ["0.1764706","0.1764706","0.1764706"]
-        }
-        self.grass_colour_dict = {
-            5 : ["0.1911765", "0.1084139", "0.07590831"],
-            4 : ["0.3414807","0.3823529","0.295199"],
-            3 : ["0.2647566", "0.3382353", "0.181552"],
-            2 : ["0.2647059", "0.1474943", "0.1206748"],
-            1 : ["0.1911765", "0.1084139", "0.07590831"]
-        }
-        self.desert_colour_dict = {
-            5 : ["0.1911765", "0.1084139", "0.07590831"],
-            4 : ["0.4679692", "0.4852941", "0.1712803"],
-            3 : ["0.5147059", "0.3879217", "0.04163063"],
-            2 : ["0.4117647","0.1987249","0.1150519"],
-            1 : ["0.3676471","0.1139868","0.05136246"]
-        }
-        self.arctic_colour_dict = {
-            5 : ["0.1911765", "0.1084139", "0.07590831"],
-            4 : ["0.2058823" ,"0.3904664" ,"0.5"],
-            3 : ["0.447" ,"0.447" ,"0.447"],
-            2 : ["0.2083694" ,"0.291612" ,"0.6911765"],
-            1 : ["0.1314879" ,"0.1899535" ,"0.4705882"]
-        }
-        self.swamp_colour_dict = {
-            5 : ["0.1911765", "0.1084139", "0.07590831"],
-            4 : ["0.2647566" , "0.3382353" , "0.1815528"],
-            3 : ["0.2484533" , "0.25" , "0.1378676"],
-            2 : ["0.1323529" , "0.1258427" , "0.03795415"],
-            1 : ["0.1102941" , "0.1051038" , "0.06325691"]
-        }
-        self.void_dict = {
-            5 : ["0.122", "0.122", "0.122"],
-            4 : ["0.4485294" , "0.313311", "0.4447993"],
-            3 : ["0.3382353" , "0.1964749", "0.3167268"],
-            2 : ["0.1764706" , "0.09083045", "0.1634769"],
-            1 : ["0.053", "0.053", "0.053"]
-        }
-        self.colour_dict = self.stone_colour_dict
+        self.themes = [
+            'Stone',
+            'Grass',
+            'Desert',
+            'Arctic',
+            'Swamp',
+            'Void'
+            ]
+        self.theme_attributes= theme_attributes
         
         self.background_dict = {
             'Default' : 1,
@@ -90,6 +57,7 @@ class SnapshotCreator:
             'Iceberg',
             'Dance Party',
             'The Pier',
+            'Freeplay',
             'Jungle Temple',
             'Volcano',
             'The Mainframe',
@@ -108,52 +76,39 @@ class SnapshotCreator:
             "crate" : [0, 0, 0],
             "barrel" : [6, 0.5, 0.5],
             "scaffold" : [56,0,0],
+            "door" : [15,0,0]
         }
         self.dir = os.path.join('C:\\Users', os.getlogin(), 'Appdata','LocalLow', 'Clever Endeavour Games', 'Ultimate Chicken Horse', 'snapshots')
         
         self.Generate_Level()
         
     def Generate_Level(self):
-        self.Pick_Colours()
+        self.Set_Level_Attributes()
         self.Create_Scene()
         self.Add_Blocks()
         self.Write_To_File()
         
-    def Pick_Colours(self):
-        if self.level_grid.map_theme == 'Random':
-            pass
-        if self.level_grid.map_theme == 'Stone':
-            self.colour_dict = self.stone_colour_dict
-        if self.level_grid.map_theme == 'Grass':
-            self.colour_dict = self.grass_colour_dict
-        if self.level_grid.map_theme == 'Desert':
-            self.colour_dict = self.desert_colour_dict
-        if self.level_grid.map_theme == 'Arctic':
-            self.colour_dict = self.arctic_colour_dict
-        if self.level_grid.map_theme == 'Swamp':
-            self.colour_dict = self.swamp_colour_dict
-        if self.level_grid.map_theme == 'Void':
-            self.colour_dict = self.void_dict
+    def Set_Level_Attributes(self):
+        self.theme = self.theme_attributes[self.themes.index(self.level_grid.theme)]
+        self.colour_dict = self.theme[0]
+        
+        if self.level_grid.background == 'Random':
+            self.background = random.choice(self.theme[1])
+        else:
+            self.background = self.background_dict[self.level_grid.background]
+            
+        if self.level_grid.music == 'Random':
+            self.music = random.choice([num for num in range(len(self.music_list)) if num != 10])
+        else:
+            self.music = self.music_list.index(self.level_grid.music)
 
     def Create_Scene(self):
-        if self.level_grid.background == 'Random':
-            random_key = random.choice(list(self.background_dict.keys()))
-            background = self.background_dict[random_key]
-        else:
-            background = self.background_dict[self.level_grid.background]
-        if self.level_grid.music == 'Random':
-            for i in range(200):
-                music =random.choice([num for num in range(20) if num != 10])
-
-        else:    
-            music = self.music_list.index(self.level_grid.music)
-        
+        print(self.level_grid.theme, self.background)
         self.root.set("levelSceneName", "BlankLevel")
         self.root.set("saveFormatVersion", "1")
-        self.root.set("customLevelBackground", f"{background}")
-        self.root.set("customLevelMusic", f"{music}")
-        self.root.set("customLevelAmbience", f"{music}")
-
+        self.root.set("customLevelBackground", f"{self.background}")
+        self.root.set("customLevelMusic", f"{self.music}")
+        self.root.set("customLevelAmbience", f"{self.music}")
 
         DeathPit = ET.SubElement(self.root, "moved")
         
@@ -204,7 +159,7 @@ class SnapshotCreator:
         GoalBlock.set("pY", f"{self.offset_y+self.startgoal_pos[1][0]}")
         GoalBlock.set("rZ", f"{self.goal_rz}")
         
-    def Create_Block(self,x_pos,y_pos,blockID,block_offset_x, block_offset_y,rotation,colour):
+    def Create_Block(self,x_pos,y_pos,blockID,block_offset_x, block_offset_y,rotation,colour,xscale=1):
         block = ET.SubElement(self.root, "block")
         
         pos_x = x_pos+self.offset_x+block_offset_x
@@ -215,9 +170,10 @@ class SnapshotCreator:
         block.set("pX",f"{pos_x}")
         block.set("pY",f"{pos_y}")
         block.set("rZ",f"{rotation}")
+        block.set("sX",f"{xscale}")
         block.set("colR",f"{self.colour_dict[colour][0]}")
-        block.set("colG", f"{self.colour_dict[colour][1]}")
-        block.set("colB", f"{self.colour_dict[colour][2]}")
+        block.set("colG",f"{self.colour_dict[colour][1]}")
+        block.set("colB",f"{self.colour_dict[colour][2]}")
         
         self.block_count += 1
         
@@ -226,7 +182,10 @@ class SnapshotCreator:
             self.Create_Block(block[0], block[1],block[2],block[3],block[4],block[5],block[6])
         for sblock in self.special_blocks:
             info = self.special_block_info[sblock[0]]
-            self.Create_Block(sblock[1], sblock[2], info[0], info[1], info[2], sblock[3], sblock[4])
+            xscale = 1
+            if len(sblock) == 6:
+                xscale = -1
+            self.Create_Block(sblock[1], sblock[2], info[0], info[1], info[2], sblock[3], sblock[4], xscale)
             
     def Get_Next_Filename(self):
         try: 
@@ -242,8 +201,11 @@ class SnapshotCreator:
                     if file_count > current_count:
                         current_count = file_count
             count = current_count + 1
-                
-        filename = f'GeneratedLevel.{count:03}.c.snapshot'    
+        
+        if self.is_default_values:
+            filename = f'GeneratedLevel.{count:03}.c.snapshot'   
+        else:
+            filename = f'GeneratedLevelND.{count:03}.c.snapshot' 
         count+=1
         
         with open('count.txt', 'w') as f:
