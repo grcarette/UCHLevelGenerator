@@ -1,11 +1,11 @@
-#UCH Level Generator
+# UCH Level Generator
 A standalone application that procedurally generates levels for the game Ultimate Chicken Horse. Written in Python
 
-###Installation
+### Installation
 -Go to the **Releases** section and download **UCHLevelGenerator.zip**
 -Extract the folder anywhere you'd like
 
-###Usage
+### Usage
 -Select your settings to decide how the map will generate
   -The generation process was designed around the default settings. Everything should still work if you make changes, but certain settings may increase the chance of generating an impossible level
 -Enter the number of levels you'd like to generate
@@ -14,11 +14,11 @@ A standalone application that procedurally generates levels for the game Ultimat
 -To play these levels simply open "Local Levels" in the in game level loader and they should appear on screen
   -Levels will not have thumbnails until you've played them for the first time
 
-###To Do
+### To Do
 -Add additional level assets
 -Optimize point generation
 -Add pathfinding algorithm
 -Add "Draw level" functionality
 
-###Known Issues
+### Known Issues
 -On some devices map generation will stall ~25% of the time
