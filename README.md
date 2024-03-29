@@ -5,6 +5,7 @@ A standalone application that procedurally generates levels for the game Ultimat
 ### Installation
 - Go to the **Releases** section and download **UCHLevelGenerator.zip**
 - Extract the folder anywhere you'd like
+- Open UCHLevelGenerator.exe and you're ready to go
 
 ### Usage
 - Select your settings to decide how the map will generate
