@@ -22,29 +22,7 @@ class SnapshotCreator:
         self.offset_y = self.center_y - math.floor(self.boundaries[1]/2)
         self.is_default_values = is_default_values
         
-        self.themes = [
-            'Stone',
-            'Grass',
-            'Desert',
-            'Arctic',
-            'Swamp',
-            'Void'
-            ]
         self.theme_attributes= theme_attributes
-        
-        self.background_dict = {
-            'Default' : 1,
-            'Cloudy' : 2,
-            'Sunset' : 3,
-            'Forest' : 4,
-            'Night' : 5,
-            'City' : 6,
-            'Farm' : 7,
-            'Windmill' : 8,
-            'Dance Party' : 14,
-            'Plains' : 15,
-            'Water' : 16,
-        }
         
         self.music_list = [
             'The Farm',
@@ -89,13 +67,17 @@ class SnapshotCreator:
         self.Write_To_File()
         
     def Set_Level_Attributes(self):
-        self.theme = self.theme_attributes[self.themes.index(self.level_grid.theme)]
+        if self.level_grid.theme == 0:
+            self.theme = random.randint(0, len(self.theme_attributes) - 1)
+        else:
+            self.theme = self.level_grid.theme
+        self.theme = self.theme_attributes[self.theme]
         self.colour_dict = self.theme[0]
         
-        if self.level_grid.background == 'Random':
+        if self.level_grid.background == 0:
             self.background = random.choice(self.theme[1])
         else:
-            self.background = self.background_dict[self.level_grid.background]
+            self.background = self.level_grid.background
             
         if self.level_grid.music == 'Random':
             self.music = random.choice([num for num in range(len(self.music_list)) if num != 10])
@@ -103,7 +85,6 @@ class SnapshotCreator:
             self.music = self.music_list.index(self.level_grid.music)
 
     def Create_Scene(self):
-        print(self.level_grid.theme, self.background)
         self.root.set("levelSceneName", "BlankLevel")
         self.root.set("saveFormatVersion", "1")
         self.root.set("customLevelBackground", f"{self.background}")
@@ -194,10 +175,8 @@ class SnapshotCreator:
         except FileNotFoundError:
             current_count = 0
             for file in os.listdir(self.dir):
-                if('GeneratedLevel.') in file and file[-14:-12].isdigit(): #-14 -11 is the location of the numerical code
-                    print(file[-14:-11])
+                if('GeneratedLevel.') in file and file[-14:-12].isdigit(): #-14 -12 is the location of the numerical code
                     file_count = int(file[-14:-11])
-                    print(file_count)
                     if file_count > current_count:
                         current_count = file_count
             count = current_count + 1
@@ -205,7 +184,7 @@ class SnapshotCreator:
         if self.is_default_values:
             filename = f'GeneratedLevel.{count:03}.c.snapshot'   
         else:
-            filename = f'GeneratedLevelND.{count:03}.c.snapshot' 
+            filename = f'GeneratedLevel.ND.{count:03}.c.snapshot' 
         count+=1
         
         with open('count.txt', 'w') as f:
@@ -216,8 +195,6 @@ class SnapshotCreator:
     def Write_To_File(self):
         xml_string = ET.tostring(self.root)
         filename = self.Get_Next_Filename()
-        
-        print(os.path.join(self.dir, filename))
         
         with lzma.open(os.path.join(self.dir, filename), "wb", format=lzma.FORMAT_ALONE) as output_file:
             output_file.write(xml_string)

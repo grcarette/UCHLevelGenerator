@@ -36,63 +36,71 @@ class UCHLevelGenerator(tk.Tk):
         self.curve_intensity = 3
         self.smoothness = 3
         
-        self.themes = [
-            'Stone',
-            'Grass',
-            'Desert',
-            'Arctic',
-            'Swamp',
-            'Void'
-            ]
-        self.theme_attributes=[                
+        self.background_dict = {
+            'Random' : 0,
+            'Default' : 1,
+            'Cloudy' : 2,
+            'Sunset' : 3,
+            'Forest' : 4,
+            'Night' : 5,
+            'City' : 6,
+            'Farm' : 7,
+            'Windmill' : 8,
+            'Dance Party' : 14,
+            'Plains' : 15,
+            'Water' : 16,
+        }
+                
+        self.theme_attributes=[
+            [], #random                
             [{ #stone
                 5 : ["0.1911765", "0.1084139", "0.07590831"],
                 4 : ["0.3308824", "0.3308824", "0.3308824"],
                 3 : ["0.253", "0.253", "0.253"],
                 2 : ["0.2039216","0.2039216","0.2039216"],
                 1 : ["0.1764706","0.1764706","0.1764706"]
-            }, [1,2,3,6,7,15]],
+            }, [1,2,3,6,7,15], 'Stone'],
             [{ #grass
                 5 : ["0.1911765", "0.1084139", "0.07590831"],
                 4 : ["0.3414807","0.3823529","0.295199"],
                 3 : ["0.2647566", "0.3382353", "0.181552"],
                 2 : ["0.2647059", "0.1474943", "0.1206748"],
                 1 : ["0.1911765", "0.1084139", "0.07590831"]
-            }, [1,2,3,4,5,6,7,8,15]],
+            }, [1,2,3,4,5,6,7,8,15], 'Grass'],
             [{ #desert
                 5 : ["0.1911765", "0.1084139", "0.07590831"],
                 4 : ["0.4679692", "0.4852941", "0.1712803"],
                 3 : ["0.5147059", "0.3879217", "0.04163063"],
                 2 : ["0.4117647","0.1987249","0.1150519"],
                 1 : ["0.3676471","0.1139868","0.05136246"]
-            }, [1,2,3,4,7,8,15]],
+            }, [1,2,3,4,7,8,15], 'Desert'],
             [{ #arctic
                 5 : ["0.1911765", "0.1084139", "0.07590831"],
                 4 : ["0.2058823" ,"0.3904664" ,"0.5"],
                 3 : ["0.447" ,"0.447" ,"0.447"],
                 2 : ["0.2083694" ,"0.291612" ,"0.6911765"],
                 1 : ["0.1314879" ,"0.1899535" ,"0.4705882"]
-            }, [1,2,3,4,5,6,16]],
+            }, [1,2,3,4,5,6,16], 'Arctic'],
            [{ #swamp
                 5 : ["0.1911765", "0.1084139", "0.07590831"],
                 4 : ["0.2647566" , "0.3382353" , "0.1815528"],
                 3 : ["0.2484533" , "0.25" , "0.1378676"],
                 2 : ["0.1323529" , "0.1258427" , "0.03795415"],
                 1 : ["0.1102941" , "0.1051038" , "0.06325691"]
-            }, [1,2,4,7,8,15]],
+            }, [1,2,4,7,8,15], 'Swamp'],
             [{ #void
                 5 : ["0.122", "0.122", "0.122"],
                 4 : ["0.4485294" , "0.313311", "0.4447993"],
                 3 : ["0.3382353" , "0.1964749", "0.3167268"],
                 2 : ["0.1764706" , "0.09083045", "0.1634769"],
                 1 : ["0.053", "0.053", "0.053"]
-            }, [1,6]]]
+            }, [1,6], 'Void']]
         
         self.default_values = [
             'Large',
+            0,
             'Random',
-            'Random',
-            'Random',
+            0,
             'Medium',
             'Medium',
             '3.0',
@@ -240,7 +248,7 @@ class UCHLevelGenerator(tk.Tk):
             widget_frame,
             text="Reset to Defaults",
             width=34,
-            command=lambda: self.Reset_To_Defaults(widget_frame)
+            command=lambda: self.Reset_To_Defaults()
         )
         reset_to_default_button.grid(row=10, column=0, columnspan=2, padx=self.dd_padx, pady=(8,0), sticky='w')
         
@@ -259,15 +267,15 @@ class UCHLevelGenerator(tk.Tk):
         
         self.Create_Placeholder_Image(level_canvas)
         
-    def Reset_To_Defaults(self, widget_frame):     
-        self.map_size.set(self.default_values[0])
-        self.map_theme.set(self.default_values[1])
-        self.music.set(self.default_values[2])
-        self.background.set(self.default_values[3])
-        self.path_thickness.set(self.default_values[4])
-        self.asset_frequency.set(self.default_values[5])
-        self.smooth_scale.set(int(float(self.default_values[6])))
-        self.curve_intensity_scale.set(int(float(self.default_values[7])))
+    def Reset_To_Defaults(self):     
+        self.map_size.set('Large')
+        self.map_theme.set('Random')
+        self.music.set('Random')
+        self.background.set('Random')
+        self.path_thickness.set('Medium')
+        self.asset_frequency.set('Medium')
+        self.smooth_scale.set(3)
+        self.curve_intensity_scale.set(3)
         self.num_level.set('1')
 
     def Change_Curve_Scale(self, value):
@@ -284,53 +292,59 @@ class UCHLevelGenerator(tk.Tk):
         self.after(500, lambda: self.Update_Level_Canvas(level_canvas, theme, background))
         
     def Create_Placeholder_Image(self, level_canvas):
-        try:
-            tmp_level_args = self.Get_Level_Args()
-            tmp_level_grid = LevelGrid(tmp_level_args)
-            self.level_array = np.copy(tmp_level_grid.array)
-            self.Update_Level_Canvas(level_canvas, tmp_level_args[1], tmp_level_args[3])
-        except:
-            pass
+        tmp_level_args = self.Get_Level_Args()
+        tmp_level_args = self.Pick_Random(tmp_level_args)
+        tmp_level_grid = LevelGrid(tmp_level_args)
+        self.level_array = np.copy(tmp_level_grid.array)
+        self.Update_Level_Canvas(level_canvas, tmp_level_args[1], tmp_level_args[3])
+        # except:
+        #     pass
 
     def Get_Level_Args(self):
         map_size = self.map_size.get() 
-        map_theme = self.map_theme.get()
+        theme = self.map_theme.get()
+        if theme == 'Random':
+            theme = 0
+        else:
+            theme = self.map_theme_dropdown['values'].index(theme)
         music = self.music.get()
-        background = self.background.get()
+        background = self.background_dict[self.background.get()]
         path_thickness = self.path_thickness.get()
         asset_frequency = self.asset_frequency.get()
         curve_intensity = self.curve_intensity
         smooth_scale = self.smoothness
-        return [map_size, map_theme, music, background, path_thickness, asset_frequency, curve_intensity, smooth_scale]
+        return [map_size, theme, music, background, path_thickness, asset_frequency, curve_intensity, smooth_scale]
     
-    def Pick_Random(self, theme, background):
-        if theme == 'Random':
-            theme = random.choice(self.map_theme_dropdown['values'][1:])
-        if background == 'Random':
-            background = random.choice(self.background_dropdown['values'][1:])
-            
-        return theme, background
+    def Pick_Random(self, level_args):
+        if level_args[1] == 0:
+            level_args[1] = random.randint(1,len(self.map_theme_dropdown['values'])-1)
+        if level_args[3] == 0:
+            level_args[3] = level_args[3] = random.choice(self.theme_attributes[level_args[1]][1])
+        return level_args
     
     def Check_If_Default(self, level_args):
-        print(level_args)
         for i in range(len(level_args)):
-            print(i)
-            print(level_args[i], self.default_values[i])
+            
             if level_args[i] != self.default_values[i] and i not in [1, 2]:
                 return False
         return True
 
     def Generate_Level_Async(self, level_canvas):
         self.generate_button.config(state=tk.DISABLED, text="Generating...")
-        level_args = self.Get_Level_Args()
-        is_default_values = self.Check_If_Default(level_args)
-        level_args[1], level_args[3] = self.Pick_Random(level_args[1], level_args[3])
         num_level = self.num_level.get()
+        
         if num_level.isdigit() and 1 <= int(num_level) <= 100:
             num_level = int(num_level) - 1
-            thread = threading.Thread(target=self.Generate_Level, args=(level_args, is_default_values, 1))
+            level_args = self.Get_Level_Args()
+            is_default_values = self.Check_If_Default(level_args)
+            
+            first_level_args = level_args.copy()
+            first_level_args = self.Pick_Random(first_level_args)
+            
+            thread = threading.Thread(target=self.Generate_Level, args=(first_level_args, is_default_values, 1))
             thread.start()
-            self.Update_Level_Canvas(level_canvas, level_args[1], level_args[3])
+            self.Update_Level_Canvas(level_canvas, first_level_args[1], first_level_args[3])
+            
             if num_level >= 1:
                 thread = threading.Thread(target=self.Generate_Level, args=(level_args, is_default_values, num_level))
                 thread.start()
@@ -365,17 +379,17 @@ class LevelCanvas(tk.Canvas):
         }
         self.bg_colour_dict = {
             'Random':'#77dded',
-            'Default':'#77dded',
-            'Cloudy':'#77dded',
-            'Sunset':'#f5da56',
-            'Forest':'#77dded',
-            'Night':'#262626',
-            'City':'#cfb8de',
-            'Farm':'#e3e2cc',
-            'Windmill':'#e3e2cc',
-            'Dance Party':'#262626',
-            'Plains':'#cee3cc',
-            'Water':'#77dded',
+            1 :'#77dded',
+            2 :'#77dded',
+            3 :'#f5da56',
+            4 :'#77dded',
+            5 :'#262626',
+            6 :'#cfb8de',
+            7 :'#e3e2cc',
+            8 :'#e3e2cc',
+            14 :'#262626',
+            15 :'#cee3cc',
+            16 :'#77dded',
         }
         self.pixel_size = pixel_size
         self.width = width + 1
@@ -385,17 +399,15 @@ class LevelCanvas(tk.Canvas):
         
     def Rgb_To_Hex(self, rgb, theme):
         brightness_coeff = 1.8
-        if theme == 'Arctic':
+        if theme[2] == 'Arctic':
             brightness_coeff = 1.4
         hex_colour = '#{:02x}{:02x}{:02x}'.format(int(float(rgb[0])*255*brightness_coeff), int(float(rgb[1])*255*brightness_coeff), int(float(rgb[2])*255*brightness_coeff))
         return hex_colour
     
     def Set_Colours(self, theme, background):
-        if theme == 'Random':
-            theme = 'Stone'
-        theme_colours = self.level_generator.theme_attributes[self.level_generator.themes.index(theme)]
-        for colour in theme_colours[0]:
-            hex_colour = self.Rgb_To_Hex(theme_colours[0][colour], theme)
+        theme = self.level_generator.theme_attributes[theme]
+        for colour in theme[0]:
+            hex_colour = self.Rgb_To_Hex(theme[0][colour], theme)
             self.colour_dict[colour] = hex_colour
         self.colour_dict[0] = self.bg_colour_dict[background]
         
@@ -417,13 +429,3 @@ class LevelCanvas(tk.Canvas):
             for col in range(np.shape(grid)[1]):
                 self.pixels[self.height - row - 2,col] = grid[row,col]
         self.Draw_Pixels()
-                
-if __name__ == "__main__":
-    a = {
-        'a' : 1,
-        'b' : 2,
-        'c' : 3
-    }
-    for d in a:
-        print(a[d])
-
