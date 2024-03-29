@@ -1,7 +1,8 @@
 # UCH Level Generator
 A standalone application that procedurally generates levels for the game Ultimate Chicken Horse. Written in Python
 
-![AppUI](https://github.com/grcarette/UCHMapGenerator/assets/AppUI.png)
+![AppUI](https://github.com/grcarette/UCHLevelGenerator/assets/58717176/8f150db5-3ce8-4353-9619-a4527d5831e3)
+
 ### Installation
 - Go to the **Releases** section and download **UCHLevelGenerator.zip**
 - Extract the folder anywhere you'd like
