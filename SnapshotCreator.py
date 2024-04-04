@@ -3,10 +3,11 @@ import random
 import numpy as np
 import math
 import lzma
+import json
 import os
 
 class SnapshotCreator:
-    def __init__(self, levelgrid, optimizer, theme_attributes, is_default_values):
+    def __init__(self, levelgrid, optimizer, theme_attributes, is_default_values):   
         self.root = ET.Element("scene")
         self.block_list = optimizer.block_list
         self.level_grid = levelgrid
@@ -56,11 +57,11 @@ class SnapshotCreator:
             "scaffold" : [56,0,0],
             "door" : [15,0,0]
         }
-        self.dir = os.path.join('C:\\Users', os.getlogin(), 'Appdata','LocalLow', 'Clever Endeavour Games', 'Ultimate Chicken Horse', 'snapshots')
         
         self.Generate_Level()
         
     def Generate_Level(self):
+        self.Get_FilePath()
         self.Set_Level_Attributes()
         self.Create_Scene()
         self.Add_Blocks()
@@ -68,7 +69,7 @@ class SnapshotCreator:
         
     def Set_Level_Attributes(self):
         if self.level_grid.theme == 0:
-            self.theme = random.randint(0, len(self.theme_attributes) - 1)
+            self.theme = random.randint(1, len(self.theme_attributes) - 1)
         else:
             self.theme = self.level_grid.theme
         self.theme = self.theme_attributes[self.theme]
@@ -191,6 +192,18 @@ class SnapshotCreator:
             f.write(str(count))
         
         return filename
+    
+    def Get_FilePath(self):
+        
+        if os.path.isfile('config.json'):
+            with open('config.json', 'r') as config_file:
+                config = json.load(config_file)
+                self.dir = config['dir']
+        else:
+            self.dir = os.path.join('C:\\Users', os.getlogin(), 'Appdata','LocalLow', 'Clever Endeavour Games', 'Ultimate Chicken Horse', 'snapshots')
+            
+            with open('config.json', 'w') as config:
+                json.dump({'dir': self.dir}, config)
                 
     def Write_To_File(self):
         xml_string = ET.tostring(self.root)
