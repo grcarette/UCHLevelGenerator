@@ -23,5 +23,5 @@ A standalone application that procedurally generates levels for the game Ultimat
 - Add pathfinding algorithm
 - Add "Draw level" functionality
 
-### Known Issues
-- On some devices map generation will stall ~25% of the time
+### Common Issues:
+-If map generation is failing every time open the config file in notepad and ensure that the user is correct.
